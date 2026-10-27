@@ -5,7 +5,7 @@ DISK="/dev/block/mmcblk0"
 get_part_num()
 {
     local part_name="$1"
-    sgdisk --print "$DISK" | busybox awk -v name="$part_name" '$1 ~ /^[0-9]+$/ && $7 == name {print $1; exit}'
+    sgdisk --print "$DISK" | awk -v name="$part_name" '$1 ~ /^[0-9]+$/ && $7 == name {print $1; exit}'
 }
 
 detect_partitions()
@@ -25,15 +25,15 @@ mount_partitions()
 {
     mkdir -p /DPP
     mkdir -p /persist
-    busybox mount -o ro "${DISK}p${DPP}" /DPP/
-    busybox mount "${DISK}p${PERSIST}" /persist/
+    mount -t vfat -o ro "${DISK}p${DPP}" /DPP/
+    mount -t ext4 "${DISK}p${PERSIST}" /persist/
 }
 
 umount_partitions()
 {
     sync
-    busybox umount /DPP/
-    busybox umount /persist/
+    umount /DPP/
+    umount /persist/
 }
 
 provision()
@@ -72,7 +72,7 @@ extract_wlan_mac()
 {
     # Locate WLAN.PROVISION case-insensitively on FAT16 DPP partition
     local if
-    if=$(busybox find /DPP -iname "WLAN.PROVISION" 2>/dev/null | busybox head -n 1)
+    if=$(find /DPP -iname "WLAN.PROVISION" 2>/dev/null | head -n 1)
     if [ -z "$if" ]; then
         if="/DPP/QCOM/WLAN.PROVISION"
     fi
@@ -87,7 +87,7 @@ extract_wlan_mac()
     # Function to extract 6 bytes and convert to uppercase
     extract_mac_address() {
         local start_byte=$1
-        busybox hexdump -v -e '6/1 "%02X"' -s "$start_byte" -n 6 "$if" | busybox tr 'a-f' 'A-F'
+        od -An -tx1 -j "$start_byte" -N 6 "$if" | tr -d ' \n' | tr 'a-f' 'A-F'
     }
 
     # Extract each MAC address
@@ -109,7 +109,7 @@ write_bdaddr()
 {
     # Locate BT.PROVISION case-insensitively on FAT16 DPP partition
     local if
-    if=$(busybox find /DPP -iname "BT.PROVISION" 2>/dev/null | busybox head -n 1)
+    if=$(find /DPP -iname "BT.PROVISION" 2>/dev/null | head -n 1)
     if [ -z "$if" ]; then
         if="/DPP/QCOM/BT.PROVISION"
     fi
@@ -122,10 +122,10 @@ write_bdaddr()
     fi
 
     # Extract 6 bytes starting from the 3rd byte (offset 2)
-    mac_address=$(busybox hexdump -v -e '6/1 "%02X"' -s 2 -n 6 "$if" | busybox tr 'a-f' 'A-F')
+    mac_address=$(od -An -tx1 -j 2 -N 6 "$if" | tr -d ' \n' | tr 'a-f' 'A-F')
 
     # Format the extracted bytes into 00:00:00:00:00:00
-    formatted_mac=$(echo "$mac_address" | busybox sed 's/\(..\)/\1:/g; s/:$//')
+    formatted_mac=$(echo "$mac_address" | sed -e 's/\(..\)/\1:/g' -e 's/:$//')
 
     # Write the formatted MAC address to the output file
     echo "$formatted_mac" > "$of"
@@ -145,7 +145,7 @@ fi
 USERDATA=$(get_part_num "userdata")
 if [ -n "$USERDATA" ] && [ -b "${DISK}p${USERDATA}" ]; then
     mkdir -p /data
-    busybox mount "${DISK}p${USERDATA}" /data 2>/dev/null || true
+    mount -t ext4 "${DISK}p${USERDATA}" /data 2>/dev/null || true
     mkdir -p /data/media/0
 fi
 

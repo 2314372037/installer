@@ -6,7 +6,7 @@ DISK="/dev/block/mmcblk0"
 get_part_num()
 {
     local part_name="$1"
-    sgdisk --print "$DISK" | busybox awk -v name="$part_name" '$1 ~ /^[0-9]+$/ && $7 == name {print $1; exit}'
+    sgdisk --print "$DISK" | awk -v name="$part_name" '$1 ~ /^[0-9]+$/ && $7 == name {print $1; exit}'
 }
 
 # Wait for /dev/block/mmcblk0p<N> device node (create via mknod if ueventd lags)
@@ -36,8 +36,8 @@ wait_for_part_node()
 unmount_all_mmcblk0()
 {
     swapoff -a 2>/dev/null || true
-    for mp in $(busybox awk '$1 ~ /^\/dev\/block\/mmcblk0p/ {print $2}' /proc/mounts | busybox sort -r); do
-        busybox umount "$mp" 2>/dev/null || busybox umount -l "$mp" 2>/dev/null || true
+    for mp in $(awk '$1 ~ /^\/dev\/block\/mmcblk0p/ {print $2}' /proc/mounts | sort -r); do
+        umount "$mp" 2>/dev/null || umount -l "$mp" 2>/dev/null || true
     done
 }
 
@@ -219,10 +219,10 @@ partition()
     userdata_num=$(get_part_num "userdata")
     if [ -n "$userdata_num" ] && [ -b "${DISK}p${userdata_num}" ]; then
         mkdir -p /data
-        if busybox mount "${DISK}p${userdata_num}" /data; then
+        if mount -t ext4 "${DISK}p${userdata_num}" /data; then
             mkdir -p /data/media/0
             chmod 0770 /data/media /data/media/0 2>/dev/null || true
-            busybox umount /data
+            umount /data
         fi
     fi
 
@@ -246,23 +246,23 @@ use_aboot()
 
     mkdir -p /efiesp
     mkdir -p /aboot
-    busybox mount "${DISK}p${efiesp}" /efiesp/
-    busybox mount "${DISK}p${aboot}" /aboot/
+    mount -t vfat "${DISK}p${efiesp}" /efiesp/
+    mount -t vfat "${DISK}p${aboot}" /aboot/
     if [ -f /efiesp/emmc_appsboot.mbn ]; then
         if cp /efiesp/emmc_appsboot.mbn /aboot/emmc_appsboot.mbn && [ -s /aboot/emmc_appsboot.mbn ]; then
             rm /efiesp/emmc_appsboot.mbn
         else
             echo "Error: Failed to copy emmc_appsboot.mbn to aboot!"
-            busybox umount /efiesp/ 2>/dev/null || true
-            busybox umount /aboot/ 2>/dev/null || true
+            umount /efiesp/ 2>/dev/null || true
+            umount /aboot/ 2>/dev/null || true
             exit 1
         fi
     else
         echo "Warning: /efiesp/emmc_appsboot.mbn not found (may have already been moved)"
     fi
     sync
-    busybox umount /efiesp/
-    busybox umount /aboot/
+    umount /efiesp/
+    umount /aboot/
 }
 ##############################
 

@@ -108,7 +108,7 @@ IF ERRORLEVEL 1 (
 )
 
 echo Running partition script
-"%~dp0bin\adb.exe" shell "busybox sed -i 's/\r$//' /partition.sh && bash /partition.sh"
+"%~dp0bin\adb.exe" shell "sed -i 's/\r$//' /partition.sh && bash /partition.sh"
 IF ERRORLEVEL 1 (
     echo Failed to run partition.sh
     pause
@@ -163,7 +163,7 @@ IF ERRORLEVEL 1 (
 )
 
 echo Running provisioning script
-"%~dp0bin\adb.exe" shell "busybox sed -i 's/\r$//' /provision.sh && bash /provision.sh"
+"%~dp0bin\adb.exe" shell "sed -i 's/\r$//' /provision.sh && bash /provision.sh"
 IF ERRORLEVEL 1 (
     echo Failed to run provision.sh
     pause
